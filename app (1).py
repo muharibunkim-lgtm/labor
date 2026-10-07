@@ -2,12 +2,14 @@ import streamlit as st
 
 # 페이지 기본 설정
 st.set_page_config(
-    page_title="편의점 알바 영웅: 정당한 권리와 지혜로운 협상",
+    page_title="편의점 노사 상생 시뮬레이션: 권리와 경영의 지혜",
     page_icon="🏪",
     layout="centered"
 )
 
-# --- 1. 초기 세션 상태(Session State) 설정 ---
+# --- 1. 세션 상태(Session State) 초기화 ---
+if "role" not in st.session_state:
+    st.session_state.role = None  # 'worker' 또는 'boss'
 if "stage" not in st.session_state:
     st.session_state.stage = 1
 if "hp" not in st.session_state:
@@ -19,11 +21,12 @@ if "knowledge" not in st.session_state:
 if "trust" not in st.session_state:
     st.session_state.trust = 50
 if "evidence" not in st.session_state:
-    st.session_state.evidence = []  # 수집한 증거 목록
+    st.session_state.evidence = []
 if "history" not in st.session_state:
     st.session_state.history = []
 
 def reset_game():
+    st.session_state.role = None
     st.session_state.stage = 1
     st.session_state.hp = 100
     st.session_state.money = 0
@@ -32,284 +35,473 @@ def reset_game():
     st.session_state.evidence = []
     st.session_state.history = []
 
-# --- 2. 게임 헤더 및 대시보드 ---
-st.title("🏪 편의점 알바 영웅: 정당한 권리와 지혜로운 협상")
-st.caption("권리만 주장하기보다 '논리'와 '증거'로 사장님을 설득하는 시뮬레이션 웹게임")
+# --- 2. 역할 선택 화면 ---
+if st.session_state.role is None:
+    st.title("🏪 편의점 노사 상생 협상 시뮬레이션")
+    st.caption("근무자와 점주님의 서로 다른 입장과 노동 관계법을 배우는 대화형 시뮬레이션")
+    st.write("---")
+    
+    st.subheader("🎭 플레이할 시점을 선택해 주세요")
+    
+    col_w, col_b = st.columns(2)
+    
+    with col_w:
+        st.markdown("### 🧑‍💼 알바생 모드")
+        st.write("""
+        - **목표:** 정당한 수당과 권리를 지혜로운 대화와 소명 자료로 챙기기
+        - **주요 난관:** 주휴수당 산정, 야간 근무 가산, 제품 손실 소명, 감정노동 대응
+        """)
+        if st.button("알바생으로 시작하기", use_container_width=True, key="start_worker"):
+            st.session_state.role = "worker"
+            st.session_state.money = 0
+            st.rerun()
 
-# 4개 지표 대시보드
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("🔋 내 체력", f"{st.session_state.hp}%")
-col2.metric("🪙 누적 임금", f"{st.session_state.money:,}원")
-col3.metric("🛡️ 권리 지수", f"{st.session_state.knowledge}점")
-col4.metric("🤝 사장님 신뢰", f"{st.session_state.trust}점")
+    with col_b:
+        st.markdown("### 👨‍💼 점주님(사장님) 모드")
+        st.write("""
+        - **목표:** 인건비 및 매장 자금을 효율적으로 관리하며 법적 의무 준수하기
+        - **주요 난관:** 계약서 교부, 주 15시간 미만 쪼개기 계약 고민, 매장 손실 처리, 근무자 보호
+        """)
+        if st.button("점주님으로 시작하기", use_container_width=True, key="start_boss"):
+            st.session_state.role = "boss"
+            st.session_state.money = 500000  # 매장 운용 예비 자금
+            st.rerun()
 
-# 상태 바 (체력)
-st.write("**내 체력 상태**")
-st.progress(max(0, min(100, st.session_state.hp)) / 100)
+    st.stop()
+
+# --- 3. 게임 대시보드 (역할에 따른 지표 변화) ---
+st.title("🏪 편의점 노사 상생 시뮬레이션")
+
+if st.session_state.role == "worker":
+    st.caption("🧑‍💼 [알바생 모드] 정당한 권리와 예의 바른 협상으로 상생하기")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("🔋 내 컨디션", f"{st.session_state.hp}%")
+    col2.metric("🪙 누적 지급 보수", f"{st.session_state.money:,}원")
+    col3.metric("🛡️ 권리 지수", f"{st.session_state.knowledge}점")
+    col4.metric("🤝 점주님 신뢰", f"{st.session_state.trust}점")
+    st.write("**내 컨디션 상태**")
+    st.progress(max(0, min(100, st.session_state.hp)) / 100)
+
+else:  # boss mode
+    st.caption("👨‍💼 [점주님 모드] 준법 경영과 매장 자금 관리로 안심 매장 만들기")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("🏬 매장 피로도", f"{100 - st.session_state.hp}%")
+    col2.metric("💰 매장 운용 자금", f"{st.session_state.money:,}원")
+    col3.metric("📜 준법 지수", f"{st.session_state.knowledge}점")
+    col4.metric("🤝 근무자 신뢰", f"{st.session_state.trust}점")
+    st.write("**매장 운영 안정도**")
+    st.progress(max(0, min(100, st.session_state.hp)) / 100)
 
 if st.session_state.evidence:
-    st.info(f"📁 **내가 확보한 증거 문서:** {', '.join(st.session_state.evidence)}")
+    st.info(f"📁 **보관 중인 제출 서류/기록:** {', '.join(st.session_state.evidence)}")
 
 st.divider()
 
-# 게임 오버 조건 체크
+# --- 4. 게임 오버 조건 체크 ---
 if st.session_state.trust <= 0:
-    st.error("💥 **게임 오버:** 사장님과의 신뢰가 깨져 해고당했습니다! 권리를 요구할 때는 감정적인 태도보다 예의 바르고 논리적인 대화가 필요합니다.")
-    if st.button("🔄 다시 도전하기"):
+    st.error("💥 **시뮬레이션 종료:** 신뢰 관계가 상실되어 더 이상 원만한 매장 근무 및 운영을 지속하기 어려워졌습니다.")
+    if st.button("🔄 처음으로 돌아가기"):
         reset_game()
         st.rerun()
     st.stop()
 
 if st.session_state.hp <= 0:
-    st.error("💥 **게임 오버:** 과로로 병원에 입원했습니다! 체력 관리와 휴게시간 확보는 필수입니다.")
-    if st.button("🔄 다시 도전하기"):
+    st.error("💥 **시뮬레이션 종료:** 과도한 피로 누적으로 인해 근무 수행 및 매장 운영이 불가능해졌습니다.")
+    if st.button("🔄 처음으로 돌아가기"):
         reset_game()
         st.rerun()
     st.stop()
 
-# --- 3. 스테이지별 시나리오 ---
 
-# [STAGE 1] 근로계약서 작성과 서류 검토
-if st.session_state.stage == 1:
-    st.subheader("📍 1단계: 근로계약서와 증거 확보")
-    
-    st.info("""
-    **🏪 상황:** 출근 첫날, 사장님이 일부터 하라고 하십니다.  
-    **사장님:** "바쁜 시간이니까 우선 일부터 배우자. 계약서는 한 달 뒤에 손에 익으면 쓰면 돼~"
-    """)
+# ==============================================================================
+# --- 5-A. 알바생 모드 시나리오 ---
+# ==============================================================================
+if st.session_state.role == "worker":
 
-    st.markdown("### ❓ 어떻게 대처할까요?")
-    
-    choice_s1 = st.radio(
-        "내가 취할 대화나 속마음을 선택하세요:",
-        [
-            "1. '사장님, 계약서를 서명해서 서로 1부씩 보관하면 근무 조건도 명확해지고, 저도 더 책임감 있게 일할 수 있을 것 같아요!'",
-            "2. '사장님, 근로기준법상 첫날 계약서 안 쓰면 불법인 거 모르세요? 지금 당장 작성해 주세요.'",
-            "3. (속마음: '사장님께 바로 말씀드리긴 부담스러우니... 일단 오늘 근무 시간표랑 출퇴근 문자메시지만 사진으로 찍어 보관해야겠다.')",
-            "4. '네, 사장님! 매장이 바쁘니까 일 먼저 배울게요. 계약서는 나중에 한가할 때 천천히 쓰겠습니다.'"
-        ]
-    )
-
-    if st.button("선택 결정하기", use_container_width=True, key="btn_s1"):
-        if choice_s1.startswith("1."):
-            st.session_state.knowledge += 20
-            st.session_state.trust += 10
-            st.session_state.evidence.append("작성된 근로계약서 사본")
-            st.session_state.history.append(("1단계", "지혜로운 작성 요구", "서로에게 유익함을 설명하여 근로계약서를 작성하고 사본을 챙겼습니다."))
-            st.session_state.stage = 2
-            st.rerun()
-        elif choice_s1.startswith("2."):
-            st.session_state.knowledge += 10
-            st.session_state.trust -= 35
-            st.session_state.history.append(("1단계", "감정적 대립", "법을 언급했지만 사장님과의 신뢰도가 급격히 떨어졌습니다."))
-            st.session_state.stage = 2
-            st.rerun()
-        elif choice_s1.startswith("3."):
-            st.session_state.evidence.append("출퇴근 기록 사진")
-            st.session_state.knowledge += 5
-            st.session_state.trust += 5
-            st.session_state.history.append(("1단계", "증거 수집", "계약서는 못 썼지만 추후 입증할 출퇴근 사진을 챙겼습니다."))
-            st.session_state.stage = 2
-            st.rerun()
-        elif choice_s1.startswith("4."):
-            st.session_state.trust += 10
-            st.session_state.knowledge -= 15
-            st.session_state.hp -= 10
-            st.session_state.history.append(("1단계", "권리 포기", "계약서 없이 일을 시작하여 불이익의 위험에 노출되었습니다."))
-            st.session_state.stage = 2
-            st.rerun()
-
-# [STAGE 2] 직접 계산하는 주휴수당 미션
-elif st.session_state.stage == 2:
-    st.subheader("📍 2단계: 직접 계산하는 소중한 주휴수당")
-    
-    st.info("""
-    **🏪 상황:** 일주일 동안 하루 5시간씩, 총 3일(주 15시간) 성실하게 일했습니다! (최저시급: 10,030원)  
-    **사장님:** "이번 주 고생했다! 총 15시간 일했으니 150,450원 입금했다~"  
-    **내 생각:** '음? 주 15시간 이상 개근해서 일했으면 **주휴수당(성실 휴식 보너스)**도 추가로 받아야 하는 것 같은데...?'
-    """)
-
-    st.warning("🧮 **[직접 계산 퀴즈]** 주 15시간 일했을 때 꼭 받아야 할 '주휴수당 포함 총 임금'은 얼마일까요?")
-    st.caption("💡 힌트: 주휴수당은 1주일 동안 약속된 근무시간을 모두 채우면 1일치(5시간) 일값을 추가로 더 주는 제도입니다!")
-
-    user_calc = st.radio(
-        "정확한 계산 금액을 선택하세요:",
-        [
-            "1. 150,450원 (기본 15시간 수당만 받는 게 맞다)",
-            "2. 200,600원 (기본 15시간 + 주휴수당 5시간 = 총 20시간 수당)",
-            "3. 250,750원 (기본 15시간 + 주휴수당 10시간 = 총 25시간 수당)"
-        ]
-    )
-
-    if st.button("계산 결과 제출 및 사장님께 말씀드리기", use_container_width=True, key="btn_s2"):
-        if "2. 200,600원" in user_calc:
-            if "작성된 근로계약서 사본" in st.session_state.evidence or "출퇴근 기록 사진" in st.session_state.evidence:
-                st.success("✅ 정확한 계산입니다! 근로계약서/증거를 보여드리며 말씀드리니 사장님도 인정하셨습니다.")
-                st.session_state.money += 200600
-                st.session_state.knowledge += 25
-                st.session_state.trust += 5
-                st.session_state.history.append(("2단계", "주휴수당 계산 성공", "정확한 계산 수치와 증거로 정당한 주휴수당까지 수령했습니다."))
-            else:
-                st.warning("⚠️ 계산은 맞았지만 증거(계약서/기록)가 없어 사장님이 '그런 거 없었다'며 일부만 인정해 주셨습니다.")
-                st.session_state.money += 175000
-                st.session_state.knowledge += 15
-                st.session_state.trust -= 10
-                st.session_state.history.append(("2단계", "증거 부족 난항", "계산은 맞았으나 증거가 부족해 일부 금액만 받았습니다."))
-            st.session_state.stage = 3
-            st.rerun()
-        else:
-            st.error("❌ 잘못된 계산입니다! 사장님이 주신 기본 수당만 받거나 잘못된 요청으로 신뢰가 깎였습니다.")
-            st.session_state.money += 150450
-            st.session_state.knowledge -= 10
-            st.session_state.trust -= 10
-            st.session_state.history.append(("2단계", "계산 오류", "주휴수당 계산을 잘못하여 제 권리를 챙기지 못했습니다."))
-            st.session_state.stage = 3
-            st.rerun()
-
-# [STAGE 3] 복합 딜레마 (대타 야간근무 & 휴게시간)
-elif st.session_state.stage == 3:
-    st.subheader("📍 3단계: 갑작스러운 대타 부탁과 야간 근무")
-    
-    st.info("""
-    **🏪 상황:** 밤 10시가 다 되었는데, 다음 타임 알바생이 갑자기 구멍을 냈습니다.  
-    **사장님:** "야, 미안한데 오늘 밤 10시부터 새벽 2시까지 4시간만 더 대타 뛰어주라. 시급은 평소처럼 똑같이 줄게! 안 해주면 매장 문 닫아야 해..."
-    """)
-
-    with st.expander("💡 [법률 지식] 밤 10시 이후 야간근무는 시급이 다를까요?"):
-        st.write("""
-        - **야간근무 수당 (밤 10시 ~ 다음 날 아침 6시)**: 밤 10시 이후 일할 때 상시 5인 이상 사업장에서는 **시급의 1.5배**를 지급해야 합니다.
-        - 또한 4시간 일할 때 30분 이상의 휴게시간을 부여해야 합니다.
+    # [STAGE 1] 서면 계약 체결
+    if st.session_state.stage == 1:
+        st.subheader("📍 1단계: 근로계약서 교부 요청")
+        st.info("""
+        **🏪 상황:** 출근 첫날, 점주님이 매장 정리부터 안내하십니다.  
+        **점주님:** "요즘 매장이 많이 바쁘니 일부터 우선 배우자. 서면 계약서는 업무에 적응하고 난 뒤 천천히 쓰자꾸나."
         """)
 
-    choice_s3 = st.radio(
-        "어떻게 대처하는 것이 가장 지혜로울까요?",
-        [
-            "1. '밤 10시 이후는 야간수당(1.5배)이 적용되고, 4시간 근무 시 30분 휴식이 필요합니다. 수당과 휴게시간을 보장해 주시면 기꺼이 도와드릴게요!'",
-            "2. '내일 중요한 시험도 있고 몸이 너무 피곤해서 새벽까지 일하긴 어렵습니다. 죄송합니다. 대신 사장님이 오실 때까지만 30분 기다려 드릴게요.'",
-            "3. '사장님 사정이 많이 딱하시네요. 제가 그냥 평소 시급대로 받고 새벽 2시까지 밤샘 대타 해드릴게요!'",
-            "4. '싫어요! 밤 10시 이후에 일 시키는 건 불법인 거 모르세요? 당장 노동청에 신고할 거예요!'"
-        ]
-    )
+        choice = st.radio(
+            "어떻게 응대하는 것이 바람직할까요?",
+            [
+                "1. '점주님, 계약서를 서명해서 1부씩 보관하면 근무 조건도 명확해지고 저도 더 책임감 있게 일할 수 있을 것 같아요!'",
+                "2. '점주님, 첫날 서면 계약을 미루는 것은 규정에 어긋납니다. 지금 즉시 작성해 주셔야 합니다.'",
+                "3. (속마음: '직접 말씀드리기는 부담스러우니, 우선 오늘 출퇴근 기록 메세지만 사진으로 남겨두어야겠다.')",
+                "4. '네, 점주님! 안내해 주신 대로 일부터 먼저 배우겠습니다.'"
+            ]
+        )
 
-    if st.button("선택 결정하기", use_container_width=True, key="btn_s3"):
-        if choice_s3.startswith("1."):
-            st.session_state.hp -= 20
-            st.session_state.money += 60180  # 1.5배 야간 수당
-            st.session_state.knowledge += 20
-            st.session_state.trust += 5
-            st.session_state.history.append(("3단계", "야간수당 & 휴게 협상", "조건(야간수당 1.5배 + 휴식)을 정확히 협상하여 윈윈했습니다."))
+        if st.button("선택 결정하기", use_container_width=True, key="w_btn_1"):
+            if choice.startswith("1."):
+                st.session_state.knowledge += 20
+                st.session_state.trust += 10
+                st.session_state.evidence.append("작성된 근로계약서 사본")
+                st.session_state.history.append(("1단계", "지혜로운 서류 교부 요청", "상호 유익함을 설명하여 계약서를 교부받았습니다."))
+            elif choice.startswith("2."):
+                st.session_state.knowledge += 10
+                st.session_state.trust -= 30
+                st.session_state.history.append(("1단계", "경직된 규정 지적", "원칙을 강조했으나 점주님과의 관계가 다소 경색되었습니다."))
+            elif choice.startswith("3."):
+                st.session_state.evidence.append("출퇴근 기록 사진")
+                st.session_state.knowledge += 5
+                st.session_state.trust += 5
+                st.session_state.history.append(("1단계", "기록 보관", "직접적 요청은 미루었으나 정황 사진을 보관했습니다."))
+            elif choice.startswith("4."):
+                st.session_state.trust += 10
+                st.session_state.knowledge -= 15
+                st.session_state.hp -= 10
+                st.session_state.history.append(("1단계", "기준 미확립", "서면 계약 없이 일을 시작하여 조건 명확화 기회를 놓쳤습니다."))
+            
+            st.session_state.stage = 2
+            st.rerun()
+
+    # [STAGE 2] 주휴수당 산정
+    elif st.session_state.stage == 2:
+        st.subheader("📍 2단계: 주휴수당 산정 미션")
+        st.info("""
+        **🏪 상황:** 일주일 동안 하루 5시간씩 3일(총 주 15시간) 성실하게 만근했습니다! (최저시급: 10,030원)  
+        **점주님:** "고생 많았다! 이번 주 15시간 일한 분량으로 150,450원을 입금했단다."
+        """)
+
+        user_calc = st.radio(
+            "주 15시간 이상 만근 시 지급받아야 할 올바른 총 금액은 얼마일까요?",
+            [
+                "1. 150,450원 (기본 근무 15시간 수당만 산정)",
+                "2. 200,600원 (기본 15시간 + 주휴 산정 5시간 = 총 20시간 수당)",
+                "3. 250,750원 (기본 15시간 + 주휴 산정 10시간 = 총 25시간 수당)"
+            ]
+        )
+
+        if st.button("산정 결과 제출하기", use_container_width=True, key="w_btn_2"):
+            if "2. 200,600원" in user_calc:
+                if "작성된 근로계약서 사본" in st.session_state.evidence or "출퇴근 기록 사진" in st.session_state.evidence:
+                    st.success("✅ 정확한 산정입니다! 작성한 서류 및 사진을 함께 확인시켜 드리니 점주님께서 기꺼이 수용하셨습니다.")
+                    st.session_state.money += 200600
+                    st.session_state.knowledge += 25
+                    st.session_state.trust += 5
+                    st.session_state.history.append(("2단계", "주휴수당 산정 성공", "정확한 계산과 정황 서류로 정당한 수당을 수령했습니다."))
+                else:
+                    st.warning("⚠️ 계산은 타당하나 서명 서류가 부족하여 일부 합의된 조정 금액만 산정되었습니다.")
+                    st.session_state.money += 175000
+                    st.session_state.knowledge += 15
+                    st.session_state.trust -= 10
+                    st.session_state.history.append(("2단계", "증빙 부족으로 인한 조정", "계산은 맞았으나 자료 부족으로 조정 수령했습니다."))
+            else:
+                st.error("❌ 산정이 정확하지 않아 기본 수당만 적용되었습니다.")
+                st.session_state.money += 150450
+                st.session_state.knowledge -= 10
+                st.session_state.trust -= 10
+                st.session_state.history.append(("2단계", "산정 오류", "수당 산정 착오로 권리를 확인받지 못했습니다."))
+            
+            st.session_state.stage = 3
+            st.rerun()
+
+    # [STAGE 3] 상품 파손 및 손실 공제
+    elif st.session_state.stage == 3:
+        st.subheader("📍 3단계: 매장 상품 손실 소명")
+        st.info("""
+        **🏪 상황:** 혼잡한 시간에 손님이 상품을 꺼내다 바닥에 떨어뜨려 깨졌습니다.  
+        **점주님:** "미리 주의를 주지 못했으니, 파손 금액 15,000원을 이번 보수에서 공제하겠다."
+        """)
+
+        choice = st.radio(
+            "어떤 대사와 행동으로 소명하시겠습니까?",
+            [
+                "1. '점주님, 매장 녹화 영상을 확인해 보시면 이용객 과실임을 확인하실 수 있습니다. 임금 전액 지급 원칙에 따라 일방 공제는 어려움을 말씀드립니다.'",
+                "2. '제가 깬 것도 아닌데 저한테 왜 그러세요! 절대 제 돈으로 차감 못 합니다!'",
+                "3. '제 주의도 부족했으니 7,500원씩 나누어 부담하겠습니다.'",
+                "4. '죄송합니다, 점주님... 제 보수에서 15,000원 빼주세요.'"
+            ]
+        )
+
+        if st.button("선택 결정하기", use_container_width=True, key="w_btn_3"):
+            if choice.startswith("1."):
+                st.session_state.knowledge += 25
+                st.session_state.trust += 5
+                st.session_state.history.append(("3단계", "녹화 영상 확증 및 전액 지급 설명", "객관적 녹화 자료 확인 요청으로 부당한 공제를 예방했습니다."))
+            elif choice.startswith("2."):
+                st.session_state.trust -= 25
+                st.session_state.money -= 15000
+                st.session_state.history.append(("3단계", "감정적 언쟁", "논리적 소명 없이 감정이 앞서 차감을 막지 못했습니다."))
+            elif choice.startswith("3."):
+                st.session_state.money -= 7500
+                st.session_state.trust += 10
+                st.session_state.history.append(("3단계", "절충안 분담", "원만한 해결을 위해 손실 일부를 부담했습니다."))
+            elif choice.startswith("4."):
+                st.session_state.money -= 15000
+                st.session_state.trust += 15
+                st.session_state.knowledge -= 20
+                st.session_state.history.append(("4단계", "부담 수용", "원칙 확인 없이 손실 전액을 스스로 부담했습니다."))
+
             st.session_state.stage = 4
             st.rerun()
-        elif choice_s3.startswith("2."):
-            st.session_state.hp -= 5
-            st.session_state.money += 5015  # 30분 수당
-            st.session_state.trust += 5
-            st.session_state.knowledge += 15
-            st.session_state.history.append(("3단계", "현명한 거절과 대안", "자기 상황을 솔직히 밝히고 가능한 대안을 제시해 신뢰와 정당성을 지켰습니다."))
+
+    # [STAGE 4] 감정노동 및 손님 폭언 대처
+    elif st.session_state.stage == 4:
+        st.subheader("📍 4단계: 감정노동 보호 및 대응")
+        st.info("""
+        **🏪 상황:** 한 손님이 반말을 하며 매장 내에서 모욕적인 언사를 퍼붓고 있습니다!  
+        **손님:** "서비스가 왜 이 모양이야! 당장 사장 불러오고 계산 다시 해!"
+        """)
+
+        with st.expander("💡 [노동 법률 참고] 감정노동자 보호 규정"):
+            st.write("""
+            - **산업안전보건법 제41조**: 고객의 폭언 등으로 인한 건강장해 예방을 위해 점주는 근무자의 휴식 요구, 업무 일시 중단, 치료 지원 등의 보호 조치를 이행할 의무가 있습니다.
+            """)
+
+        choice = st.radio(
+            "어떻게 대처하는 것이 안전하고 정당할까요?",
+            [
+                "1. '손님, 반말과 무례한 언사는 삼가 주시기 바랍니다. 지속되시면 매장 매뉴얼에 따라 점주님 호출 및 보호 조치를 요청하겠습니다.'",
+                "2. '너나 잘해! 매장에서 행패 부리지 말고 당장 나가!'",
+                "3. 무서워서 아무 말도 못 하고 눈물만 흘리며 무조건 죄송하다고 사과한다.",
+                "4. 즉시 점주님께 상황을 신속히 알리고 매뉴얼에 따라 잠시 휴게 공간으로 피신하여 보호 조치를 요청한다."
+            ]
+        )
+
+        if st.button("선택 결정하기", use_container_width=True, key="w_btn_4"):
+            if choice.startswith("1."):
+                st.session_state.knowledge += 20
+                st.session_state.trust += 10
+                st.session_state.hp -= 10
+                st.session_state.history.append(("4단계", "차분한 매뉴얼 대처", "단호하고 예의 바르게 대응하여 추가 마찰을 예방했습니다."))
+            elif choice.startswith("2."):
+                st.session_state.trust -= 30
+                st.session_state.hp -= 30
+                st.session_state.history.append(("4단계", "맞대응 언쟁", "손님과의 맞대응으로 매장 혼란이 커지고 마음의 상처를 입었습니다."))
+            elif choice.startswith("3."):
+                st.session_state.hp -= 40
+                st.session_state.trust += 5
+                st.session_state.history.append(("4단계", "무조건 수용", "감정적 상처가 커지고 정당한 보호 조치를 받지 못했습니다."))
+            elif choice.startswith("4."):
+                st.session_state.knowledge += 25
+                st.session_state.trust += 15
+                st.session_state.hp -= 5
+                st.session_state.history.append(("4단계", "점주 보고 및 피신", "보호 매뉴얼을 준수하여 정당한 보호 조치를 이끌어냈습니다."))
+
+            st.session_state.stage = 5
+            st.rerun()
+
+    # [STAGE 5] 알바생 엔딩 리포트
+    elif st.session_state.stage == 5:
+        st.balloons()
+        st.subheader("🎉 [알바생 모드] 최종 시뮬레이션 평가")
+        score = st.session_state.knowledge
+        trust = st.session_state.trust
+
+        if score >= 80 and trust >= 50:
+            ending_title = "🏆 [S급] 스마트한 상생 협상가"
+            ending_desc = "규정을 명확히 알고, 감정적이 아닌 논리와 정황 서류로 점주님과의 신뢰를 지켜낸 최고의 협상 리더입니다!"
+        elif score >= 70 and trust < 50:
+            ending_title = "⚔️ [A급] 소신 있는 원칙 준수자"
+            ending_desc = "정당한 권리는 확실히 지켰으나, 소통 과정에서 신뢰 유지를 강화하면 더 훌륭해질 수 있습니다!"
+        elif trust >= 70 and score < 50:
+            ending_title = "😇 [B급] 배려형 알바생 (권리 보완 필요)"
+            ending_desc = "점주님과의 관계는 훌륭하지만 정당한 수당과 휴식을 양보하셨네요. 법적 기준을 좀 더 챙겨보세요!"
+        else:
+            ending_title = "🐣 [C급] 초보 근무자"
+            ending_desc = "근무 권리와 정당한 대화 방식에 대한 학습이 필요합니다."
+
+        st.success(f"### 최종 판정: {ending_title}")
+        st.write(ending_desc)
+        
+        st.write("---")
+        st.write("### 📋 결정 이력 리포트")
+        for stage_name, title, desc in st.session_state.history:
+            st.write(f"- **[{stage_name}] {title}**: {desc}")
+
+        st.write("---")
+        if st.button("🔄 역할 선택 화면으로 돌아가기", use_container_width=True):
+            reset_game()
+            st.rerun()
+
+
+# ==============================================================================
+# --- 5-B. 점주님(사장님) 모드 시나리오 ---
+# ==============================================================================
+else:
+
+    # [STAGE 1] 첫 채용과 계약서 서면 작성
+    if st.session_state.stage == 1:
+        st.subheader("📍 1단계: 신규 근무자 채용과 서면 계약")
+        st.info("""
+        **🏪 상황:** 신규 알바생이 첫 출근했습니다. 손님이 몰리는 바쁜 시간대입니다.  
+        **내 마음:** '매장이 정신없이 바쁜데... 계약서는 나중에 수습기간 지난 다음에 써도 되지 않을까?'
+        """)
+
+        choice = st.radio(
+            "점주로서 어떤 결정을 내리시겠습니까?",
+            [
+                "1. '바쁘더라도 근로조건(시급, 근무시간, 휴게시간)을 서면으로 명확히 작성하고 사본 1부를 즉시 교부한다.'",
+                "2. '일단 일부터 배우게 하고, 한 달 뒤 일에 적응되면 천천히 써야겠다.'",
+                "3. '요즘 서면 작성은 번거로우니 대충 모바일 메세지로 시급만 찍어 보내준다.'"
+            ]
+        )
+
+        if st.button("경영 결정 내리기", use_container_width=True, key="b_btn_1"):
+            if choice.startswith("1."):
+                st.session_state.knowledge += 25
+                st.session_state.trust += 20
+                st.session_state.history.append(("1단계", "서면 계약 즉시 교부", "법적 분쟁 위험을 완전히 제거하고 근무자의 신뢰를 얻었습니다."))
+            elif choice.startswith("2."):
+                st.session_state.knowledge -= 15
+                st.session_state.trust -= 10
+                st.session_state.hp -= 15
+                st.session_state.history.append(("1단계", "계약서 작성 미루기", "서면 계약 미교부 위험에 노출되고 불확실성이 증가했습니다."))
+            elif choice.startswith("3."):
+                st.session_state.knowledge -= 20
+                st.session_state.trust -= 20
+                st.session_state.history.append(("1단계", "구두/약식 체결", "명확한 입증 서류가 부족하여 분쟁 여지를 남겼습니다."))
+
+            st.session_state.stage = 2
+            st.rerun()
+
+    # [STAGE 2] 인건비 절감과 쪼개기 계약 딜레마
+    elif st.session_state.stage == 2:
+        st.subheader("📍 2단계: 인건비 계획과 주휴수당 고민")
+        st.info("""
+        **🏪 상황:** 매장 임대료와 재료비가 올라 이번 달 수익이 줄었습니다.  
+        **고민:** '주 15시간 이상 일시키면 주휴수당(5시간분 추가)을 줘야 하는데... 근무시간을 주 14시간 이하로 쪼개서 알바생 여럿을 쓸까?'
+        """)
+
+        with st.expander("💡 [경영 리포트] 주 15시간 미만(쪼개기) 스케줄링의 장단점"):
+            st.write("""
+            - **장점**: 단기 인건비 지출 절감 (주휴수당 미발생)
+            - **단점**: 근무자 교체 주기가 빨라짐, 잦은 교육 피로도 증가, 알바생의 매장 숙련도 및 책임감 저하
+            """)
+
+        choice = st.radio(
+            "어떤 근무 스케줄링 전략을 선택하시겠습니까?",
+            [
+                "1. 주 15시간 이상 근무를 보장하고 정당한 주휴수당을 반영하여, 숙련된 근무자의 장기 근무를 유도한다.",
+                "2. 인건비 지출을 최우선으로 줄이기 위해 모든 알바생을 주 14시간 이하로 쪼개서 채용한다.",
+                "3. 주 15시간 이상 일을 시키고, 주휴수당은 슬그머니 빼고 기본 시급만 입금해 본다."
+            ]
+        )
+
+        if st.button("경영 결정 내리기", use_container_width=True, key="b_btn_2"):
+            if choice.startswith("1."):
+                st.session_state.money -= 50000  # 정당 수당 지출
+                st.session_state.knowledge += 20
+                st.session_state.trust += 20
+                st.session_state.hp += 10  # 숙련자로 인해 피로 감소
+                st.session_state.history.append(("2단계", "정당 수당 보장 및 숙련 관리", "상생 경영으로 매장 안정성과 알바생 충성도를 확보했습니다."))
+            elif choice.startswith("2."):
+                st.session_state.knowledge += 5
+                st.session_state.trust -= 15
+                st.session_state.hp -= 25  # 잦은 채용과 교육으로 피로 누적
+                st.session_state.history.append(("2단계", "쪼개기 채용 실행", "단기 인건비는 줄였으나 근무자 피로와 잦은 교체로 매장 관리가 힘들어졌습니다."))
+            elif choice.startswith("3."):
+                st.session_state.knowledge -= 30
+                st.session_state.trust -= 40
+                st.session_state.history.append(("2단계", "수당 미지급", "근무자의 반발로 신뢰도가 급격히 하락했습니다."))
+
+            st.session_state.stage = 3
+            st.rerun()
+
+    # [STAGE 3] 상품 파손 손실 처리
+    elif st.session_state.stage == 3:
+        st.subheader("📍 3단계: 매장 손실 발생 시 책임 처리")
+        st.info("""
+        **🏪 상황:** 매장에서 15,000원 상당의 와인이 깨져 파손되었습니다. 근무자가 손님이 떨어뜨렸다고 소명합니다.  
+        **고민:** '이번 달 매장 손실도 많은데, 알바비에서 차감하는 게 맞을까?'
+        """)
+
+        choice = st.radio(
+            "어떻게 매장 손실을 처리하시겠습니까?",
+            [
+                "1. 매장 녹화 영상을 함께 확인한 후 이용객 과실임이 입증되면 매장 로스(손실) 비용으로 처리하고 근무자를 안심시킨다.",
+                "2. '매장 관리 소홀도 책임이야'라며 알바생 임금에서 15,000원을 일방적으로 공제한다.",
+                "3. 근무자와 대화하여 안타까운 상황임을 나누고 7,500원씩 절반씩 손실을 부담하기로 합의한다."
+            ]
+        )
+
+        if st.button("경영 결정 내리기", use_container_width=True, key="b_btn_3"):
+            if choice.startswith("1."):
+                st.session_state.money -= 15000  # 매장 로스 비용 처리
+                st.session_state.knowledge += 20
+                st.session_state.trust += 15
+                st.session_state.history.append(("3단계", "매장 손실 자발 수용", "임금 전액 지급 원칙을 준수하고 책임감 있는 점주 이미지를 구축했습니다."))
+            elif choice.startswith("2."):
+                st.session_state.knowledge -= 25
+                st.session_state.trust -= 35
+                st.session_state.history.append(("3단계", "일방 임금 공제", "임금 전액 지급 규정을 위반하여 분쟁 가능성이 발생했습니다."))
+            elif choice.startswith("3."):
+                st.session_state.money -= 7500
+                st.session_state.trust += 5
+                st.session_state.history.append(("3단계", "절반 분담 합의", "상호 협의를 통해 손실을 나누어 부담했습니다."))
+
             st.session_state.stage = 4
             st.rerun()
-        elif choice_s3.startswith("3."):
-            st.session_state.hp -= 45
-            st.session_state.money += 40120  # 기본 시급 4시간
-            st.session_state.trust += 15
-            st.session_state.knowledge -= 10
-            st.session_state.history.append(("3단계", "무리한 야간대타", "사장님 신뢰는 얻었지만 체력이 바닥나고 가산 수당을 못 받았습니다."))
-            st.session_state.stage = 4
-            st.rerun()
-        elif choice_s3.startswith("4."):
-            st.session_state.trust -= 40
-            st.session_state.knowledge += 10
-            st.session_state.history.append(("3단계", "극단적 거절", "사장님과 싸우게 되어 신뢰도가 크게 떨어졌습니다."))
-            st.session_state.stage = 4
-            st.rerun()
 
-# [STAGE 4] 폐기/손실 및 배상 딜레마
-elif st.session_state.stage == 4:
-    st.subheader("📍 4단계: 손님과의 마찰 및 상품 손실")
-    
-    st.info("""
-    **🏪 상황:** 바쁜 시간대에 손님이 음료수를 집다가 실수로 바닥에 떨어뜨려 깨졌습니다. 손님은 그냥 나가버렸습니다!  
-    **사장님:** "네가 미리 주의를 안 줘서 깨진 거잖아? 음료수 값 15,000원 네 이번 알바비에서 깔 테니까 그렇게 알아!"
-    """)
+    # [STAGE 4] 근무자 보호 및 감정노동 대응
+    elif st.session_state.stage == 4:
+        st.subheader("📍 4단계: 폭언 손님 발생과 근무자 보호")
+        st.info("""
+        **🏪 상황:** 매장에서 악성 손님이 알바생에게 폭언과 모욕을 주어 알바생이 겁에 질려 있습니다.  
+        **고민:** '손님도 중요하지만, 알바생이 너무 힘들어하는데 어떻게 해야 하지?'
+        """)
 
-    st.markdown("### ❓ 내 대응 전략 선택")
-    
-    choice_s4 = st.radio(
-        "어떤 대사나 행동으로 대응하시겠습니까?",
-        [
-            "1. '사장님, CCTV를 확인해 보시면 손님의 실수라는 걸 아실 수 있어요. 근로기준법상 알바비에서 일방적으로 변제금을 차감하는 건 안 되는 것으로 알고 있습니다.'",
-            "2. '제가 깬 것도 아닌데 왜 저한테 책임을 물으세요! 진짜 너무하시네요, 절대 제 돈으로 못 냅니다!'",
-            "3. '사장님, 손님 실수가 크지만 저도 미리 주의를 주지 못한 책임이 일부 있으니, 반씩 나눠서 7,500원만 낼게요.'",
-            "4. '죄송합니다, 사장님... 제가 더 신경 썼어야 했는데 제 실수예요. 이번 알바비에서 15,000원 빼주세요.'"
-        ]
-    )
+        choice = st.radio(
+            "점주로서 어떤 보호 조치를 취하시겠습니까?",
+            [
+                "1. 즉시 알바생을 휴게 공간으로 피신시키고, 본인이 직접 응대하여 폭언 손님에게 자제를 요청하거나 매뉴얼대로 조치한다.",
+                "2. '손님은 왕이야. 네가 참고 사과해서 빨리 손님 보내라'라며 알바생에게 참으라고 강요한다.",
+                "3. 상황을 모른 척하며 알아서 해결될 때까지 카운터 뒤에 서 있는다."
+            ]
+        )
 
-    if st.button("선택 결정하기", use_container_width=True, key="btn_s4"):
-        if choice_s4.startswith("1."):
-            st.session_state.knowledge += 25
-            st.session_state.trust += 5
-            st.session_state.history.append(("4단계", "CCTV & 법적 대응 성공", "CCTV 확인 요구와 임금 전액 지급 원칙을 설명하여 부당 차감을 완벽히 막았습니다."))
-            st.session_state.stage = 5
-            st.rerun()
-        elif choice_s4.startswith("2."):
-            st.session_state.trust -= 20
-            st.session_state.money -= 15000
-            st.session_state.history.append(("4단계", "감정적 호소 실패", "논리적 근거 없이 감정만 앞세워 임금 차감을 막지 못했습니다."))
-            st.session_state.stage = 5
-            st.rerun()
-        elif choice_s4.startswith("3."):
-            st.session_state.money -= 7500
-            st.session_state.trust += 10
-            st.session_state.knowledge -= 5
-            st.session_state.history.append(("4단계", "타협안 제시", "원만한 해결을 위해 손실 일부를 부담했습니다."))
-            st.session_state.stage = 5
-            st.rerun()
-        elif choice_s4.startswith("4."):
-            st.session_state.money -= 15000
-            st.session_state.trust += 15
-            st.session_state.knowledge -= 20
-            st.session_state.history.append(("4단계", "부당 공제 수락", "권리를 포기하고 매장 손실을 본인 돈으로 지불했습니다."))
+        if st.button("경영 결정 내리기", use_container_width=True, key="b_btn_4"):
+            if choice.startswith("1."):
+                st.session_state.knowledge += 25
+                st.session_state.trust += 25
+                st.session_state.hp += 10
+                st.session_state.history.append(("4단계", "근무자 보호 조치 이행", "산업안전보건법상 감정노동자 보호 조치를 완벽히 이행하여 명품 점주가 되었습니다."))
+            elif choice.startswith("2."):
+                st.session_state.knowledge -= 20
+                st.session_state.trust -= 40
+                st.session_state.history.append(("4단계", "보호 의무 방치", "근무자의 정신적 상처를 방치하여 신뢰가 무너졌습니다."))
+            elif choice.startswith("3."):
+                st.session_state.trust -= 20
+                st.session_state.history.append(("4단계", "소극적 방관", "적절한 분쟁 해결 태도를 보이지 못했습니다."))
+
             st.session_state.stage = 5
             st.rerun()
 
-# [STAGE 5] 다차원 평가 및 엔딩
-elif st.session_state.stage == 5:
-    st.balloons()
-    st.subheader("🎉 최종 평가: 나는 어떤 알바 영웅일까?")
-    
-    score = st.session_state.knowledge
-    trust = st.session_state.trust
-    
-    # 멀티 엔딩 로직
-    if score >= 80 and trust >= 50:
-        ending_title = "🏆 [S급] 스마트한 근로권리 협상가"
-        ending_desc = "당신은 법적 권리를 완벽히 이해하고, 감정적이 아닌 '증거'와 '예의바른 논리'로 사장님을 설득하는 최고의 리더입니다!"
-    elif score >= 70 and trust < 50:
-        ending_title = "⚔️ [A급] 강직한 권리 수호자"
-        ending_desc = "권리는 잘 챙겼지만, 대화 과정에서 사장님과의 관계가 다소 경색되었습니다. 대화의 기술을 조금 더 연마해보세요!"
-    elif trust >= 70 and score < 50:
-        ending_title = "😇 [B급] 천사 알바생 (손해 보는 권리)"
-        ending_desc = "사장님과의 관계는 아주 좋지만, 본인의 정당한 수당과 휴식 권리를 많이 양보했네요. 나를 지키는 권리 공부가 필요합니다!"
-    else:
-        ending_title = "🐣 [C급] 초보 알바생"
-        ending_desc = "아직 근로 권리와 일터에서의 소통 방식에 익숙하지 않습니다. 퀴즈와 리포트를 통해 다시 학습해볼까요?"
+    # [STAGE 5] 점주님 엔딩 리포트
+    elif st.session_state.stage == 5:
+        st.balloons()
+        st.subheader("🎉 [점주님 모드] 최종 경영 리포트")
+        score = st.session_state.knowledge
+        trust = st.session_state.trust
 
-    st.success(f"### 최종 결과: {ending_title}")
-    st.write(ending_desc)
-    
-    st.write("---")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("최종 체력", f"{st.session_state.hp}%")
-    col2.metric("최종 수령 임금", f"{st.session_state.money:,}원")
-    col3.metric("권리 지수", f"{st.session_state.knowledge}점")
-    col4.metric("사장님 신뢰도", f"{st.session_state.trust}점")
+        if score >= 80 and trust >= 50:
+            ending_title = "🏆 [S급] 모범 준법 경영인"
+            ending_desc = "노동 법률을 철저히 준수하면서도 근무자를 따뜻하게 보호하여 매장의 안정과 높은 신뢰를 동시에 이뤄낸 최고 리더입니다!"
+        elif score >= 60 and trust >= 50:
+            ending_title = "🤝 [A급] 원만한 상생 점주님"
+            ending_desc = "근무자와 적극적으로 소통하며 매장을 안정적으로 운영하고 계십니다!"
+        elif trust < 50:
+            ending_title = "⚠️ [B급] 경악 모드 경영 (분쟁 위험)"
+            ending_desc = "근무자와의 신뢰가 하락했습니다. 근로계약서 교부와 임금 전액 지급 원칙을 다시 한번 점검해 보세요!"
+        else:
+            ending_title = "🐣 [C급] 초보 자영업자"
+            ending_desc = "매장 운영에 법적 기준과 소통 기술을 도입하면 훨씬 편안한 경영이 가능해집니다."
 
-    st.write("---")
-    st.write("### 📋 나의 시나리오 선택 기록")
-    for stage_name, title, desc in st.session_state.history:
-        st.write(f"- **[{stage_name}] {title}**: {desc}")
+        st.success(f"### 최종 종합 평가: {ending_title}")
+        st.write(ending_desc)
+        
+        st.write("---")
+        st.write("### 📋 경영 결정 이력 리포트")
+        for stage_name, title, desc in st.session_state.history:
+            st.write(f"- **[{stage_name}] {title}**: {desc}")
 
-    st.write("---")
-    if st.button("🔄 게임 처음부터 다시 도전하기", use_container_width=True):
-        reset_game()
-        st.rerun()
+        st.write("---")
+        if st.button("🔄 역할 선택 화면으로 돌아가기", use_container_width=True):
+            reset_game()
+            st.rerun()
